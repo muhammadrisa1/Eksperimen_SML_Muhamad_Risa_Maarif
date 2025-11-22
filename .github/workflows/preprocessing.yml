@@ -57,7 +57,7 @@ jobs:
           preprocessing/creditcard_test_X.csv
           preprocessing/creditcard_test_y.csv
 
-    # Commit and force push processed data to main
+    # Commit and push processed data directly
     - name: Commit and push processed data
       run: |
         git config --local user.email "action@github.com"
