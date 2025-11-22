@@ -15,13 +15,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1️⃣ Checkout repository dengan semua history & tag
+    # Checkout repository dengan semua history & tag
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 0   # penting agar tag baru bisa dibuat
 
-    # 2️⃣ Download dataset dari GitHub Release lama
+    # Download dataset dari GitHub Release lama
     - name: Download dataset from GitHub Release
       run: |
         echo "Downloading dataset from GitHub Release..."
@@ -30,28 +30,33 @@ jobs:
         wget -q $FILE_URL -O $FILE_NAME
         mv $FILE_NAME preprocessing/
 
-    # 3️⃣ Setup Python
+    # Setup Python
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.9'
 
-    # 4️⃣ Install dependencies
+    # Install dependencies
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pandas numpy scikit-learn imbalanced-learn
 
-    # 5️⃣ Run preprocessing script
+    # Run preprocessing script
     - name: Run preprocessing
       run: |
         cd preprocessing
         python automate_MuhamadRisaMaarif.py
 
-    # 6️⃣ Generate automatic tag (v1, v2, v3, …)
-    - name: Generate release tag
+    # Generate automatic tag (v1, v2, v3, …) dan CREATE TAG di Git
+    - name: Generate and create release tag
       id: tag
       run: |
+        # Configure Git
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Ambil tag terakhir, increment patch
         LAST_TAG=$(git tag --sort=-v:refname | head -n 1)
         if [ -z "$LAST_TAG" ]; then
           NEW_TAG="v1.0.0"
@@ -61,33 +66,21 @@ jobs:
           PATCH=$((PATCH+1))
           NEW_TAG="v$MAJOR.$MINOR.$PATCH"
         fi
+        
+        # CREATE THE TAG IN GIT REPOSITORY
+        git tag $NEW_TAG
+        git push origin $NEW_TAG
+        
         echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
-        echo "Using tag $NEW_TAG"
+        echo "Created and pushed tag $NEW_TAG"
 
-    # 7️⃣ Create Git tag in repository
-    - name: Create Git tag
-      run: |
-        git config user.name "GitHub Action"
-        git config user.email "action@github.com"
-        git tag ${{ env.NEW_TAG }}
-        git push origin ${{ env.NEW_TAG }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    # 8️⃣ Create GitHub Release
+    # Create GitHub Release
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ env.NEW_TAG }}
         name: "Preprocessed Dataset ${{ env.NEW_TAG }}"
         body: "Processed credit card dataset"
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    # Upload semua CSV hasil preprocessing ke release
-    - name: Upload all CSV files to release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: preprocessing/*.csv
+        files: preprocessing/*.csv  # Gabungkan upload file di sini
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
