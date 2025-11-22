@@ -15,7 +15,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # Download dataset from Google Drive
     - name: Download dataset from Google Drive
       run: |
         echo "Downloading dataset from Google Drive..."
@@ -23,6 +22,7 @@ jobs:
         FILE_NAME="creditcard_raw.csv"
         wget --no-check-certificate "https://drive.google.com/uc?export=download&id=${FILE_ID}" -O $FILE_NAME
         mv $FILE_NAME preprocessing/
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
