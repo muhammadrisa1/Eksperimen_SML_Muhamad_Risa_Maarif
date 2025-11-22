@@ -15,12 +15,12 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Download dataset from Google Drive
+    - name: Download dataset from Github Release
       run: |
-        echo "Downloading dataset from Google Drive..."
-        FILE_ID="17sJmWv-j7IwRZtOJbUX65pCDlujPHVqL"
+        echo "Downloading dataset from Github Release..."
+        FILE_URL="https://github.com/muhammadrisa1/Eksperimen_SML_Muhamad_Risa_Maarif/releases/download/v1.0.0/creditcard_raw.csv"
         FILE_NAME="creditcard_raw.csv"
-        wget --no-check-certificate "https://drive.google.com/uc?export=download&id=${FILE_ID}" -O $FILE_NAME
+        wget -q $FILE_URL -O $FILE_NAME
         mv $FILE_NAME preprocessing/
 
     - name: Set up Python
