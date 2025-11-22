@@ -152,7 +152,7 @@ def preprocess_pipeline(input_file, output_dir='preprocessing'):
 
 if __name__ == "__main__":
     X_train, y_train, X_test, y_test = preprocess_pipeline(
-        input_file='../creditcard_raw.csv',
+        input_file='creditcard_raw.csv',
         output_dir='.'
     )
     
