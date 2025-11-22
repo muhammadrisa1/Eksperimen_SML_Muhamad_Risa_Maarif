@@ -46,25 +46,25 @@ jobs:
         cd preprocessing
         python automate_MuhamadRisaMaarif.py
 
-    # Upload processed data as artifact
-    - name: Upload processed data
-      uses: actions/upload-artifact@v4
+    # Create or update GitHub Release
+    - name: Create or update release
+      id: create_release
+      uses: softprops/action-gh-release@v1
       with:
-        name: processed-data
-        path: |
+        tag_name: v1.1.0      # ubah sesuai versi release baru
+        name: Preprocessed Dataset v1.1.0
+        body: "Processed credit card dataset"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # Upload processed files to release
+    - name: Upload processed files to release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
           preprocessing/creditcard_train_X.csv
           preprocessing/creditcard_train_y.csv
           preprocessing/creditcard_test_X.csv
           preprocessing/creditcard_test_y.csv
-
-    # Commit and force push processed data directly
-    - name: Commit and push processed data
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git checkout main
-        git add preprocessing/*.csv || true
-        git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update: Processed data from workflow"
-        git push origin main --force
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
