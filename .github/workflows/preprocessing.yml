@@ -21,6 +21,18 @@ jobs:
       with:
         fetch-depth: 0   # penting agar tag baru bisa dibuat
 
+    # Debug 1: Check repository state
+    - name: Debug - Check repository info
+      run: |
+        echo "=== Repository Information ==="
+        echo "Repository: ${{ github.repository }}"
+        echo "SHA: ${{ github.sha }}"
+        echo "Ref: ${{ github.ref }}"
+        echo "Workflow: ${{ github.workflow }}"
+        echo "Current directory: $(pwd)"
+        echo "Contents:"
+        ls -la
+
     # Download dataset dari GitHub Release lama
     - name: Download dataset from GitHub Release
       run: |
@@ -29,6 +41,7 @@ jobs:
         FILE_NAME="creditcard_raw.csv"
         wget -q $FILE_URL -O $FILE_NAME
         mv $FILE_NAME preprocessing/
+        echo "Dataset downloaded and moved to preprocessing/"
 
     # Setup Python
     - name: Set up Python
@@ -41,46 +54,112 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pandas numpy scikit-learn imbalanced-learn
+        echo "=== Installed packages ==="
+        pip list | grep -E "(pandas|numpy|scikit|imbalanced)"
 
     # Run preprocessing script
     - name: Run preprocessing
       run: |
+        echo "=== Running preprocessing script ==="
         cd preprocessing
+        echo "Contents of preprocessing directory:"
+        ls -la
         python automate_MuhamadRisaMaarif.py
+        echo "Preprocessing script completed"
+        echo "Generated CSV files:"
+        ls -la *.csv
 
-    # Generate automatic tag (v1, v2, v3, …) dan CREATE TAG di Git
-    - name: Generate and create release tag
-      id: tag
+    # Debug 2: Check generated files
+    - name: Debug - Check generated CSV files
       run: |
-        # Configure Git
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+        echo "=== Checking generated CSV files ==="
+        echo "Current directory: $(pwd)"
+        echo "Contents of preprocessing directory:"
+        ls -la preprocessing/
+        echo "CSV files:"
+        ls -la preprocessing/*.csv 2>/dev/null || echo "No CSV files found in preprocessing/"
+        echo "File sizes:"
+        find preprocessing/ -name "*.csv" -type f -exec du -h {} \; 2>/dev/null || echo "No CSV files to check"
+
+    # Generate tag name (TANPA membuat tag di Git)
+    - name: Generate new tag name
+      id: generate_tag
+      run: |
+        echo "=== Generating new tag ==="
+        # Fetch semua tags terlebih dahulu
+        git fetch --tags
+        echo "Fetched all tags"
         
         # Ambil tag terakhir, increment patch
         LAST_TAG=$(git tag --sort=-v:refname | head -n 1)
+        echo "Last tag found: '$LAST_TAG'"
+        
         if [ -z "$LAST_TAG" ]; then
           NEW_TAG="v1.0.0"
+          echo "No existing tags, starting with: $NEW_TAG"
         else
           VERSION_NUM=$(echo $LAST_TAG | sed 's/v//')
+          echo "Version number: $VERSION_NUM"
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NUM"
-          PATCH=$((PATCH+1))
+          echo "Major: $MAJOR, Minor: $MINOR, Patch: $PATCH"
+          PATCH=$((PATCH + 1))
           NEW_TAG="v$MAJOR.$MINOR.$PATCH"
+          echo "Incremented patch version to: $NEW_TAG"
         fi
         
-        # CREATE THE TAG IN GIT REPOSITORY
-        git tag $NEW_TAG
-        git push origin $NEW_TAG
-        
         echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
-        echo "Created and pushed tag $NEW_TAG"
+        echo "✅ Final new tag: $NEW_TAG"
 
-    # Create GitHub Release
-    - name: Create GitHub Release
+    # Debug 3: Check environment variables and permissions
+    - name: Debug - Check environment and permissions
+      run: |
+        echo "=== Environment & Permissions ==="
+        echo "NEW_TAG: ${{ env.NEW_TAG }}"
+        echo "GITHUB_TOKEN available: ${{ secrets.GITHUB_TOKEN != '' }}"
+        echo "GITHUB_REPOSITORY: ${{ env.GITHUB_REPOSITORY }}"
+        echo "GITHUB_SHA: ${{ env.GITHUB_SHA }}"
+        echo "Current user:"
+        git config --get user.name || echo "No git user configured"
+        git config --get user.email || echo "No git email configured"
+
+    # Debug 4: Check existing tags
+    - name: Debug - Check existing tags
+      run: |
+        echo "=== Existing tags ==="
+        git tag --list || echo "Failed to list tags"
+        echo "=== Latest 5 tags ==="
+        git tag --sort=-v:refname | head -n 5 || echo "Failed to sort tags"
+
+    # Create GitHub Release SEKALIGUS dengan auto-create tag
+    - name: Create GitHub Release with Assets
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ env.NEW_TAG }}
         name: "Preprocessed Dataset ${{ env.NEW_TAG }}"
-        body: "Processed credit card dataset"
-        files: preprocessing/*.csv  # Gabungkan upload file di sini
+        body: |
+          Automated preprocessing results
+          
+          **Changes:**
+          - Automated data cleaning
+          - Feature scaling
+          - Handling missing values
+          - Train-test split
+          
+          **Generated Files:**
+          $(ls preprocessing/*.csv 2>/dev/null | sed 's/^/- /' || echo "No CSV files found")
+          
+          Generated by GitHub Actions workflow
+        files: preprocessing/*.csv
+        generate_release_notes: true
+        draft: false
+        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # Debug 5: Check if release was created successfully
+    - name: Debug - Verify release creation
+      if: always()
+      run: |
+        echo "=== Release Creation Status ==="
+        echo "Workflow completed for tag: ${{ env.NEW_TAG }}"
+        echo "Check https://github.com/${{ github.repository }}/releases for new release"
