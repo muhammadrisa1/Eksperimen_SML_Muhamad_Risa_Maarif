@@ -13,7 +13,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     # Download dataset from Google Drive
     - name: Download dataset from Google Drive
@@ -24,7 +24,7 @@ jobs:
         wget --no-check-certificate "https://drive.google.com/uc?export=download&id=${FILE_ID}" -O $FILE_NAME
         mv $FILE_NAME preprocessing/
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.9'
 
@@ -39,7 +39,7 @@ jobs:
         python automate_MuhamadRisaMaarif.py
 
     - name: Upload processed data
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: processed-data
         path: |
@@ -52,7 +52,8 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add preprocessing/*.csv
+        git checkout main
+        git add preprocessing/*.csv || true
         git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update: Processed data from workflow"
 
     - name: Push changes
