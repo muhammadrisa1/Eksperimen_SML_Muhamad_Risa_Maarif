@@ -15,11 +15,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout repository
+    #  Checkout repository dengan semua history & tag
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0   # penting agar tag baru bisa dibuat
 
-    # Download dataset from GitHub Release
+    #  Download dataset dari GitHub Release lama
     - name: Download dataset from GitHub Release
       run: |
         echo "Downloading dataset from GitHub Release..."
@@ -28,43 +30,55 @@ jobs:
         wget -q $FILE_URL -O $FILE_NAME
         mv $FILE_NAME preprocessing/
 
-    # Set up Python
+    #  Setup Python
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.9'
 
-    # Install dependencies
+    #  Install dependencies
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pandas numpy scikit-learn imbalanced-learn
 
-    # Run preprocessing script
+    #  Run preprocessing script
     - name: Run preprocessing
       run: |
         cd preprocessing
         python automate_MuhamadRisaMaarif.py
 
-    # Create or update GitHub Release
-    - name: Create or update release
-      id: create_release
+    #  Generate automatic tag (v1, v2, v3, …)
+    - name: Generate release tag
+      id: tag
+      run: |
+        # Ambil tag terakhir, increment patch
+        LAST_TAG=$(git tag --sort=-v:refname | head -n 1)
+        if [ -z "$LAST_TAG" ]; then
+          NEW_TAG="v1.0.0"
+        else
+          VERSION_NUM=$(echo $LAST_TAG | sed 's/v//')
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NUM"
+          PATCH=$((PATCH+1))
+          NEW_TAG="v$MAJOR.$MINOR.$PATCH"
+        fi
+        echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+        echo "Using tag $NEW_TAG"
+
+    #  Create GitHub Release
+    - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v1.1.0      # ubah sesuai versi release baru
-        name: Preprocessed Dataset v1.1.0
+        tag_name: ${{ env.NEW_TAG }}
+        name: "Preprocessed Dataset ${{ env.NEW_TAG }}"
         body: "Processed credit card dataset"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # Upload processed files to release
-    - name: Upload processed files to release
+    # Upload semua CSV hasil preprocessing ke release
+    - name: Upload all CSV files to release
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          preprocessing/creditcard_train_X.csv
-          preprocessing/creditcard_train_y.csv
-          preprocessing/creditcard_test_X.csv
-          preprocessing/creditcard_test_y.csv
+        files: preprocessing/*.csv
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
