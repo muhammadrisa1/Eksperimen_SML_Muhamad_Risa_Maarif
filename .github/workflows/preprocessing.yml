@@ -78,9 +78,8 @@ jobs:
         git tag $NEW_TAG
         git push origin $NEW_TAG
         echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
-        echo "✅ Created tag: $NEW_TAG"
+        echo " Created tag: $NEW_TAG"
 
-    # ★★★ HANYA SATU ACTION INI - CREATE RELEASE + UPLOAD FILES ★★★
     - name: Create GitHub Release with Assets
       uses: softprops/action-gh-release@v1
       with:
